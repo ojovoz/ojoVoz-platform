@@ -1,6 +1,6 @@
 ojoVoz webServer
 ----------------
-2003-2016, Eugenio Tisselli
+2003-2022, Eugenio Tisselli
 
 ----------------
 
@@ -8,7 +8,6 @@ ojoVoz webServer
 - Apache web server
 - PHP 5.3.8
 - MySQL 5.1.54
-- ffmpeg (http://ffmpeg.org/) with MP3 codecs (--enable-libmp3lame)
 
 ----------------
 
@@ -29,10 +28,6 @@ ojoVoz webServer
 -- $mail_server: address of your mail server. In the example string, port 110 is used, with protocol POP3 and NOTLS parameter. This string is used to retrieve incoming messages.
 
 -- $mapbox_api_key and $mapbox_id: Your Mapbox ID and API key (https://www.mapbox.com)
-
--- $servpath: the full path to your web server (where web documents are located)
-
--- $ffmpeg_path: full path to ffmpeg in your server
 
 -- $smtp_server: address of your SMTP server. This is used to tell the ojoVoz mobile app which SMTP server it should connect to
 
