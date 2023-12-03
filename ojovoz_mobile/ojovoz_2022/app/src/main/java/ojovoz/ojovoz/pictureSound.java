@@ -70,6 +70,7 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
     String photoFile = "";
     String prevPhotoFile = "";
     boolean photoDone;
+    boolean scaleImage;
 
     private audioRecorder soundRecorder;
     private Boolean recording;
@@ -139,6 +140,7 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
         user = preferences.getPreference("user");
         server = preferences.getPreference("server");
         phoneID = preferences.getPreference("phoneID");
+        scaleImage = preferences.getPreferenceBoolean("scale");
         if (server.isEmpty() || phoneID.isEmpty() || user.isEmpty()) {
             goToSettings();
         } else {
@@ -532,8 +534,13 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        Bitmap thumb;
         if (requestCode == CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE && resultCode == RESULT_OK) {
-            Bitmap thumb = scaleBitmap(photoFile);
+            if(scaleImage) {
+                thumb = scaleBitmap(photoFile);
+            } else {
+                thumb = BitmapFactory.decodeFile(photoFile);
+            }
             if (thumb != null) {
                 ImageView thumbnail = (ImageView) this.findViewById(R.id.thumbnail);
                 thumbnail.setImageBitmap(thumb);

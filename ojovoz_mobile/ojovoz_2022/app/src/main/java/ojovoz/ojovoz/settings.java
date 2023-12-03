@@ -11,6 +11,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -33,6 +34,7 @@ public class settings extends AppCompatActivity implements httpConnection.AsyncR
     public String server;
     public String user;
     public String phoneID;
+    public boolean scaleImage;
 
     boolean bConnecting = false;
     boolean bExit=false;
@@ -40,6 +42,7 @@ public class settings extends AppCompatActivity implements httpConnection.AsyncR
     EditText st;
     EditText pt;
     EditText ut;
+    CheckBox si;
 
     ProgressDialog downloadingParamsDialog;
     ProgressDialog downloadingTagsDialog;
@@ -55,6 +58,11 @@ public class settings extends AppCompatActivity implements httpConnection.AsyncR
         server = prefs.getPreference("server");
         user = prefs.getPreference("user");
         phoneID = prefs.getPreference("phoneID");
+        if (prefs.preferenceExists("scale")) {
+            scaleImage = prefs.getPreferenceBoolean("scale");
+        } else {
+            scaleImage = true;
+        }
 
         st = (EditText) findViewById(R.id.serverURL);
         st.setText(server);
@@ -64,6 +72,10 @@ public class settings extends AppCompatActivity implements httpConnection.AsyncR
 
         ut = (EditText) findViewById(R.id.userName);
         ut.setText(user);
+
+        si =(CheckBox) findViewById(R.id.scaleImage);
+        si.setButtonDrawable(R.drawable.custom_checkbox);
+        si.setChecked(scaleImage);
 
         Button tb = (Button)findViewById(R.id.downloadTags);
         tb.setOnClickListener(new View.OnClickListener() {
@@ -200,6 +212,8 @@ public class settings extends AppCompatActivity implements httpConnection.AsyncR
         prefs.savePreference("phoneID",phoneID);
         user=ut.getText().toString();
         prefs.savePreference("user",user);
+        boolean scaleImage = si.isChecked();
+        prefs.savePreferenceBoolean("scale",scaleImage);
         csvFileManager paramList;
         paramList = new csvFileManager("parameters");
         paramList.deleteCSVFile(this);

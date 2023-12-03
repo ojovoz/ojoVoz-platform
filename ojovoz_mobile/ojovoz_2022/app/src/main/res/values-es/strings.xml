@@ -48,4 +48,5 @@
     <string name="photoFailedMessage">Error al guardar la foto, por favor inténtalo de nuevo</string>
     <string name="messageNotSavedText">Mensaje no guardado, por favor inténtalo más tarde</string>
     <string name="saveButtonSavingLabel">GUARDANDO ...</string>
+    <string name="opScaleImage">REDUCIR TAMAÑO DE IMAGEN</string>
 </resources>
