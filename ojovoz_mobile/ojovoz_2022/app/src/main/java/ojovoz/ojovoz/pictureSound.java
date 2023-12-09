@@ -140,7 +140,11 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
         user = preferences.getPreference("user");
         server = preferences.getPreference("server");
         phoneID = preferences.getPreference("phoneID");
-        scaleImage = preferences.getPreferenceBoolean("scale");
+        if (preferences.preferenceExists("scale")) {
+            scaleImage = preferences.getPreferenceBoolean("scale");
+        } else {
+            scaleImage = true;
+        }
         if (server.isEmpty() || phoneID.isEmpty() || user.isEmpty()) {
             goToSettings();
         } else {
