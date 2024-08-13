@@ -51,4 +51,6 @@
     <string name="messageNotSavedText">Message not saved, please try again later</string>
     <string name="saveButtonSavingLabel">SAVING ...</string>
     <string name="opScaleImage">REDUCE IMAGE SIZE</string>
+    <string name="preparingAudioFiles">Preparing files</string>
+    <string name="audioFileNotConverted">Unable to convert audio file</string>
 </resources>

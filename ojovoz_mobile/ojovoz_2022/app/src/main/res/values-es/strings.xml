@@ -49,4 +49,6 @@
     <string name="messageNotSavedText">Mensaje no guardado, por favor inténtalo más tarde</string>
     <string name="saveButtonSavingLabel">GUARDANDO ...</string>
     <string name="opScaleImage">REDUCIR TAMAÑO DE IMAGEN</string>
+    <string name="preparingAudioFiles">Preparando archivos</string>
+    <string name="audioFileNotConverted">No es posibe convertir el archivo de sonido</string>
 </resources>

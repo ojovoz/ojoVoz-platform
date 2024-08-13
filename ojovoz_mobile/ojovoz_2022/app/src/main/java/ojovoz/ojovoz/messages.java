@@ -149,6 +149,7 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
         httpConnection http = new httpConnection(this, this);
         if (http.isOnline()) {
             if (getEmailParams()) {
+                //TODO: convert audio files
                 doSendMultimediaMessages();
             } else {
                 CharSequence dialogTitle = getString(R.string.downloadingParametersMessage);

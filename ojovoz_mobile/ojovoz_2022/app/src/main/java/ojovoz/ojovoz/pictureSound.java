@@ -78,6 +78,7 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
     String soundFile = "";
     String prevSoundFile = "";
     String convertedSoundFile = "NA";
+    int convertIndex = 0;
 
     Date messageDate;
 
@@ -94,6 +95,7 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
     ProgressDialog downloadingParamsDialog;
     boolean bConnecting;
     private ProgressDialog sendingMultimediaDialog;
+    private ProgressDialog preparingAudioFiles;
     private Thread uploadMultimedia;
     ArrayList<oLog> logList;
     private int[] multimediaCleanUpList;
@@ -540,7 +542,7 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
         super.onActivityResult(requestCode, resultCode, data);
         Bitmap thumb;
         if (requestCode == CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE && resultCode == RESULT_OK) {
-            if(scaleImage) {
+            if (scaleImage) {
                 thumb = scaleBitmap(photoFile);
             } else {
                 thumb = BitmapFactory.decodeFile(photoFile);
@@ -632,7 +634,7 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
     }
 
     public void recordSound(View v) {
-        if(!bSaving) {
+        if (!bSaving) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     doRecordSound();
@@ -697,9 +699,6 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
 
                 @Override
                 public void onStart() {
-                    Button bSave = (Button) findViewById(R.id.saveButton);
-                    bSave.setBackgroundResource(R.drawable.button_background_save);
-                    bSave.setText(R.string.saveButtonSavingLabel);
                 }
 
                 @Override
@@ -709,27 +708,29 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
                 @Override
                 public void onFailure(String message) {
                     convertedSoundFile="NA";
-                    saveMessage();
                 }
 
                 @Override
                 public void onSuccess(String message) {
-                    saveMessage();
                 }
 
                 @Override
                 public void onFinish() {
-                    //saveMessage();
+                    prepProgressHandler.sendMessage(prepProgressHandler.obtainMessage());
                 }
             });
         } catch (FFmpegCommandAlreadyRunningException e) {
-            Toast.makeText(this, R.string.messageNotSavedText, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.audioFileNotConverted, Toast.LENGTH_SHORT).show();
         }
     }
 
-    public void convertSoundFile() {
-        convertedSoundFile = soundFile.substring(0,soundFile.lastIndexOf("."))+".mp3";
-        String[] c = {"-i",soundFile,"-ar","22050",convertedSoundFile};
+    public void convertSoundFiles() {
+        String s = logList.get(convertIndex).soundFile;
+        if(!logList.get(convertIndex).convertedSoundFile.equals("NA")){
+            deleteFile(logList.get(convertIndex).convertedSoundFile,false);
+        }
+        convertedSoundFile = s.substring(0, s.lastIndexOf(".")) + ".mp3";
+        String[] c = {"-i", s, "-ar", "22050", convertedSoundFile};
         doFFMPEGCommand(c);
     }
 
@@ -742,21 +743,13 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
     }
 
     public void preSaveMessage(View v) {
-        if(!bSaving) {
+        if (!bSaving) {
             bSaving = true;
-            if (ffmpegCompatible) {
-                convertSoundFile();
-            } else {
-                saveMessage();
-            }
+            saveMessage();
         }
     }
 
     public void saveMessage() {
-
-        Button bSave = (Button) findViewById(R.id.saveButton);
-        bSave.setText(R.string.saveButtonText);
-        bSave.setBackgroundResource(R.drawable.button_background);
 
         if (filesToDelete.size() > 0) {
             deleteFiles();
@@ -857,7 +850,7 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
         if (http.isOnline()) {
             bConnecting = true;
             if (getEmailParams()) {
-                doSendMultimediaMessages();
+                prepareAudioFiles();
             } else {
                 CharSequence dialogTitle = getString(R.string.downloadingParametersMessage);
                 downloadingParamsDialog = new ProgressDialog(this);
@@ -882,11 +875,40 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
         }
     }
 
+    public void prepareAudioFiles() {
+
+        createLogList();
+        if (!logList.isEmpty()) {
+
+            preparingAudioFiles = new ProgressDialog(this);
+            preparingAudioFiles.setCancelable(true);
+            preparingAudioFiles.setCanceledOnTouchOutside(false);
+            CharSequence dialogTitle = getString(R.string.preparingAudioFiles);
+            preparingAudioFiles.setMessage(dialogTitle);
+            preparingAudioFiles.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+            preparingAudioFiles.setProgress(0);
+            int dialogMax = logList.size();
+            preparingAudioFiles.setMax(dialogMax);
+            preparingAudioFiles.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                @Override
+                public void onCancel(DialogInterface d) {
+                    preparingAudioFiles.dismiss();
+                }
+            });
+            preparingAudioFiles.show();
+            convertIndex=0;
+            convertSoundFiles();
+        } else {
+            Toast.makeText(this, R.string.noMessages, Toast.LENGTH_SHORT).show();
+            bConnecting = false;
+        }
+    }
+
     public void doSendMultimediaMessages() {
 
         ArrayList<String> b = new ArrayList<>();
         final ArrayList<oLog> attachments = new ArrayList<>();
-        createLogList();
+        //createLogList();
         Iterator<oLog> iterator = logList.iterator();
 
         while (iterator.hasNext()) {
@@ -948,7 +970,7 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
                                     m.addAttachment(item.convertedSoundFile);
                                 } else {
                                     File f3 = new File(item.soundFile);
-                                    if(f3.exists()){
+                                    if (f3.exists()) {
                                         m.addAttachment(item.soundFile);
                                     } else {
                                         proceed = false;
@@ -1002,6 +1024,22 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
                 l.deleteLogItems(multimediaCleanUpList);
 
                 deleteImgSndFiles(deleteFiles);
+            }
+        }
+    };
+
+    Handler prepProgressHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            preparingAudioFiles.incrementProgressBy(1);
+            if (preparingAudioFiles.getProgress() == preparingAudioFiles.getMax()) {
+                logList.get(convertIndex).soundFile = convertedSoundFile;
+                preparingAudioFiles.dismiss();
+                doSendMultimediaMessages();
+            } else {
+                logList.get(convertIndex).soundFile = convertedSoundFile;
+                convertIndex++;
+                convertSoundFiles();
             }
         }
     };
@@ -1160,7 +1198,7 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
             writer.close();
             reader.close();
             if (getEmailParams()) {
-                doSendMultimediaMessages();
+                prepareAudioFiles();
             } else {
                 Toast.makeText(this, R.string.incorrectInternetParamsMessage, Toast.LENGTH_SHORT).show();
                 bConnecting = false;
