@@ -27,6 +27,12 @@ import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.github.hiteshsondhi88.libffmpeg.ExecuteBinaryResponseHandler;
+import com.github.hiteshsondhi88.libffmpeg.FFmpeg;
+import com.github.hiteshsondhi88.libffmpeg.LoadBinaryResponseHandler;
+import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegCommandAlreadyRunningException;
+import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegNotSupportedException;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
@@ -62,6 +68,7 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
 
     boolean bConnecting;
     private ProgressDialog sendingMultimediaDialog;
+    private ProgressDialog preparingAudioFiles;
     ProgressDialog downloadingParamsDialog;
     private Thread uploadMultimedia;
     private int[] multimediaCleanUpList;
@@ -74,6 +81,14 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
     String smtpPort = "";
 
     private Context recordsContext;
+
+    List<oCardData> list;
+    Iterator<oCardData> messageIterator;
+    String convertedSoundFile = "NA";
+    oLog thisRecord = null;
+
+    FFmpeg ffmpeg;
+    boolean ffmpegCompatible = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,6 +107,8 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
         displayHeight = getIntent().getExtras().getInt("displayHeight");
 
         fillRecyclerView();
+
+        initFFMPEG();
     }
 
     @Override
@@ -133,6 +150,34 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
         return super.onOptionsItemSelected(item);
     }
 
+    public void initFFMPEG() {
+        ffmpeg = FFmpeg.getInstance(this);
+        try {
+            ffmpeg.loadBinary(new LoadBinaryResponseHandler() {
+
+                @Override
+                public void onStart() {
+                }
+
+                @Override
+                public void onFailure() {
+                    ffmpegCompatible = false;
+                }
+
+                @Override
+                public void onSuccess() {
+                }
+
+                @Override
+                public void onFinish() {
+                }
+            });
+        } catch (FFmpegNotSupportedException e) {
+            // Handle if FFmpeg is not supported by device
+            ffmpegCompatible = false;
+        }
+    }
+
     public void uploadRecords() {
         if (!bConnecting) {
             httpConnection http = new httpConnection(this, this);
@@ -149,8 +194,7 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
         httpConnection http = new httpConnection(this, this);
         if (http.isOnline()) {
             if (getEmailParams()) {
-                //TODO: convert audio files
-                doSendMultimediaMessages();
+                prepareAudioFiles();
             } else {
                 CharSequence dialogTitle = getString(R.string.downloadingParametersMessage);
                 downloadingParamsDialog = new ProgressDialog(this);
@@ -175,11 +219,88 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
         }
     }
 
+    public void prepareAudioFiles(){
+        list = recyclerViewAdapter.list;
+        messageIterator = list.iterator();
+
+        preparingAudioFiles = new ProgressDialog(this);
+        preparingAudioFiles.setCancelable(true);
+        preparingAudioFiles.setCanceledOnTouchOutside(false);
+        CharSequence dialogTitle = getString(R.string.preparingAudioFiles);
+        preparingAudioFiles.setMessage(dialogTitle);
+        preparingAudioFiles.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        preparingAudioFiles.setProgress(0);
+        int dialogMax = nSelected;
+        preparingAudioFiles.setMax(dialogMax);
+        preparingAudioFiles.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface d) {
+                preparingAudioFiles.dismiss();
+            }
+        });
+        preparingAudioFiles.show();
+        convertSoundFiles();
+    }
+
+    public void convertSoundFiles() {
+        String s = "";
+        while(messageIterator.hasNext()){
+            oCardData cd = messageIterator.next();
+            if(cd.isSelected){
+                thisRecord = logList.get(cd.line);
+                s = thisRecord.soundFile;
+                break;
+            }
+        }
+        if(!s.equals("")){
+            if(!thisRecord.convertedSoundFile.equals("NA")){
+                deleteFile(thisRecord.convertedSoundFile);
+            }
+            convertedSoundFile = s.substring(0, s.lastIndexOf(".")) + ".mp3";
+            String[] c = {"-i", s, "-ar", "22050", convertedSoundFile};
+            doFFMPEGCommand(c);
+        } else {
+            preparingAudioFiles.dismiss();
+            doSendMultimediaMessages();
+        }
+    }
+
+    public void doFFMPEGCommand(String[] c) {
+        try {
+            ffmpeg.execute(c, new ExecuteBinaryResponseHandler() {
+
+                @Override
+                public void onStart() {
+                }
+
+                @Override
+                public void onProgress(String message) {
+                }
+
+                @Override
+                public void onFailure(String message) {
+                    convertedSoundFile="NA";
+                }
+
+                @Override
+                public void onSuccess(String message) {
+                }
+
+                @Override
+                public void onFinish() {
+                    prepProgressHandler.sendMessage(prepProgressHandler.obtainMessage());
+                }
+            });
+        } catch (FFmpegCommandAlreadyRunningException e) {
+            Toast.makeText(this, R.string.audioFileNotConverted, Toast.LENGTH_SHORT).show();
+        }
+    }
+
     public void doSendMultimediaMessages() {
 
         ArrayList<String> b = new ArrayList<>();
         final ArrayList<oLog> attachments = new ArrayList<>();
-        List<oCardData> list = recyclerViewAdapter.list;
+
         Iterator<oCardData> iterator = list.iterator();
 
         while (iterator.hasNext()) {
@@ -312,6 +433,21 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
                 } else {
                     goBack();
                 }
+            }
+        }
+    };
+
+    Handler prepProgressHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            preparingAudioFiles.incrementProgressBy(1);
+            if (preparingAudioFiles.getProgress() == preparingAudioFiles.getMax()) {
+                thisRecord.soundFile = convertedSoundFile;
+                preparingAudioFiles.dismiss();
+                doSendMultimediaMessages();
+            } else {
+                thisRecord.soundFile = convertedSoundFile;
+                convertSoundFiles();
             }
         }
     };
@@ -666,7 +802,7 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
             writer.close();
             reader.close();
             if (getEmailParams()) {
-                doSendMultimediaMessages();
+                prepareAudioFiles();
             } else {
                 Toast.makeText(this, R.string.incorrectInternetParamsMessage, Toast.LENGTH_SHORT).show();
                 bConnecting = false;
