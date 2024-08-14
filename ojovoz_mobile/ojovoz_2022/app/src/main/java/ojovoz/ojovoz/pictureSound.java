@@ -707,7 +707,8 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
 
                 @Override
                 public void onFailure(String message) {
-                    convertedSoundFile="NA";
+                    convertedSoundFile = "NA";
+                    prepProgressHandler.sendMessage(prepProgressHandler.obtainMessage());
                 }
 
                 @Override
@@ -721,16 +722,17 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
             });
         } catch (FFmpegCommandAlreadyRunningException e) {
             Toast.makeText(this, R.string.audioFileNotConverted, Toast.LENGTH_SHORT).show();
+            prepProgressHandler.sendMessage(prepProgressHandler.obtainMessage());
         }
     }
 
     public void convertSoundFiles() {
         String s = logList.get(convertIndex).soundFile;
-        if(!logList.get(convertIndex).convertedSoundFile.equals("NA")){
-            deleteFile(logList.get(convertIndex).convertedSoundFile,false);
+        if (!logList.get(convertIndex).convertedSoundFile.equals("NA")) {
+            deleteFile(logList.get(convertIndex).convertedSoundFile, false);
         }
         convertedSoundFile = s.substring(0, s.lastIndexOf(".")) + ".mp3";
-        String[] c = {"-i", s, "-ar", "22050", convertedSoundFile};
+        String[] c = {"-y", "-i", s, "-ar", "22050", convertedSoundFile};
         doFFMPEGCommand(c);
     }
 
@@ -881,7 +883,7 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
         if (!logList.isEmpty()) {
 
             preparingAudioFiles = new ProgressDialog(this);
-            preparingAudioFiles.setCancelable(true);
+            preparingAudioFiles.setCancelable(false);
             preparingAudioFiles.setCanceledOnTouchOutside(false);
             CharSequence dialogTitle = getString(R.string.preparingAudioFiles);
             preparingAudioFiles.setMessage(dialogTitle);
@@ -889,14 +891,8 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
             preparingAudioFiles.setProgress(0);
             int dialogMax = logList.size();
             preparingAudioFiles.setMax(dialogMax);
-            preparingAudioFiles.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                @Override
-                public void onCancel(DialogInterface d) {
-                    preparingAudioFiles.dismiss();
-                }
-            });
             preparingAudioFiles.show();
-            convertIndex=0;
+            convertIndex = 0;
             convertSoundFiles();
         } else {
             Toast.makeText(this, R.string.noMessages, Toast.LENGTH_SHORT).show();
@@ -908,7 +904,6 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
 
         ArrayList<String> b = new ArrayList<>();
         final ArrayList<oLog> attachments = new ArrayList<>();
-        //createLogList();
         Iterator<oLog> iterator = logList.iterator();
 
         while (iterator.hasNext()) {
@@ -1031,13 +1026,14 @@ public class pictureSound extends AppCompatActivity implements httpConnection.As
     Handler prepProgressHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
+
             preparingAudioFiles.incrementProgressBy(1);
             if (preparingAudioFiles.getProgress() == preparingAudioFiles.getMax()) {
-                logList.get(convertIndex).soundFile = convertedSoundFile;
+                logList.get(convertIndex).convertedSoundFile = convertedSoundFile;
                 preparingAudioFiles.dismiss();
                 doSendMultimediaMessages();
             } else {
-                logList.get(convertIndex).soundFile = convertedSoundFile;
+                logList.get(convertIndex).convertedSoundFile = convertedSoundFile;
                 convertIndex++;
                 convertSoundFiles();
             }

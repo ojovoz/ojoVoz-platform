@@ -224,7 +224,7 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
         messageIterator = list.iterator();
 
         preparingAudioFiles = new ProgressDialog(this);
-        preparingAudioFiles.setCancelable(true);
+        preparingAudioFiles.setCancelable(false);
         preparingAudioFiles.setCanceledOnTouchOutside(false);
         CharSequence dialogTitle = getString(R.string.preparingAudioFiles);
         preparingAudioFiles.setMessage(dialogTitle);
@@ -232,12 +232,6 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
         preparingAudioFiles.setProgress(0);
         int dialogMax = nSelected;
         preparingAudioFiles.setMax(dialogMax);
-        preparingAudioFiles.setOnCancelListener(new DialogInterface.OnCancelListener() {
-            @Override
-            public void onCancel(DialogInterface d) {
-                preparingAudioFiles.dismiss();
-            }
-        });
         preparingAudioFiles.show();
         convertSoundFiles();
     }
@@ -257,7 +251,7 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
                 deleteFile(thisRecord.convertedSoundFile);
             }
             convertedSoundFile = s.substring(0, s.lastIndexOf(".")) + ".mp3";
-            String[] c = {"-i", s, "-ar", "22050", convertedSoundFile};
+            String[] c = {"-y", "-i", s, "-ar", "22050", convertedSoundFile};
             doFFMPEGCommand(c);
         } else {
             preparingAudioFiles.dismiss();
@@ -280,6 +274,7 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
                 @Override
                 public void onFailure(String message) {
                     convertedSoundFile="NA";
+                    prepProgressHandler.sendMessage(prepProgressHandler.obtainMessage());
                 }
 
                 @Override
@@ -293,6 +288,7 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
             });
         } catch (FFmpegCommandAlreadyRunningException e) {
             Toast.makeText(this, R.string.audioFileNotConverted, Toast.LENGTH_SHORT).show();
+            prepProgressHandler.sendMessage(prepProgressHandler.obtainMessage());
         }
     }
 
@@ -442,11 +438,11 @@ public class messages extends AppCompatActivity implements httpConnection.AsyncR
         public void handleMessage(Message msg) {
             preparingAudioFiles.incrementProgressBy(1);
             if (preparingAudioFiles.getProgress() == preparingAudioFiles.getMax()) {
-                thisRecord.soundFile = convertedSoundFile;
+                thisRecord.convertedSoundFile = convertedSoundFile;
                 preparingAudioFiles.dismiss();
                 doSendMultimediaMessages();
             } else {
-                thisRecord.soundFile = convertedSoundFile;
+                thisRecord.convertedSoundFile = convertedSoundFile;
                 convertSoundFiles();
             }
         }
